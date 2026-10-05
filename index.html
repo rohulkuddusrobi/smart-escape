@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Escape | Building Map</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand__mark">SE</span>
+        <div class="brand__text">
+          <h1 class="brand__title" data-i18n="appTitle">Smart Escape</h1>
+          <p class="brand__subtitle" data-i18n="appSubtitle">Interactive Building Map</p>
+        </div>
+      </div>
+
+      <div class="building">
+        <span class="building__label" data-i18n="building">Building</span>
+        <strong class="building__name" id="building-name" data-i18n="awaitingData">Awaiting data</strong>
+      </div>
+
+      <div class="stats" id="stats">
+        <span class="stat"><b id="stat-nodes">0</b> <span data-i18n="nodes">nodes</span></span>
+        <span class="stat"><b id="stat-edges">0</b> <span data-i18n="corridors">corridors</span></span>
+        <span class="stat"><b id="stat-exits">0</b> <span data-i18n="exits">exits</span></span>
+      </div>
+
+      <button class="btn btn--lang" id="lang-btn" type="button" aria-label="Switch language">বাং</button>
+    </header>
+
+    <main class="workspace">
+      <section class="panel map-panel">
+        <div class="panel__head">
+          <h2 class="panel__title" data-i18n="floorPlan">Floor Plan</h2>
+          <span class="badge badge--loading" id="map-badge" data-i18n="badgeLoading">Loading</span>
+        </div>
+
+        <div class="stage" id="map-stage">
+          <div class="state state--loading" id="loading-state">
+            <span class="spinner" aria-hidden="true"></span>
+            <p data-i18n="loadingJson">Loading building.json&hellip;</p>
+          </div>
+
+          <div class="state state--error is-hidden" id="error-state" role="alert">
+            <div class="state__icon" aria-hidden="true">!</div>
+            <p class="state__title" data-i18n="errorTitle">Could not load the building map</p>
+            <p class="state__detail" id="error-detail">Unknown error</p>
+            <p class="state__hint" data-i18n-html="serveHint">Serve this folder over HTTP (for example <code>python -m http.server</code>) so the JSON file can be fetched.</p>
+            <button class="btn" id="retry-btn" type="button" data-i18n="retry">Retry</button>
+          </div>
+
+          <svg
+            id="map-svg"
+            class="map is-hidden"
+            role="img"
+            aria-label="Building map"
+            xmlns="http://www.w3.org/2000/svg"
+          ></svg>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title" data-i18n="escapeRoute">Escape Route</h2>
+            <span class="badge badge--idle" id="route-badge" data-i18n="badgeIdle">Idle</span>
+          </div>
+          <div class="route">
+            <label class="route__label" for="start-select" data-i18n="startLocation">Start location</label>
+            <select class="select" id="start-select">
+              <option value="" data-i18n="chooseStart">Choose a room or junction&hellip;</option>
+            </select>
+            <button class="btn btn--ghost" id="clear-start-btn" type="button" data-i18n="clearStart">Clear start</button>
+            <p class="route__help" id="start-help" data-i18n="routeHelp">Click a room or junction on the map, or pick one above.</p>
+
+            <dl class="meta route__result" id="route-result" aria-live="polite">
+              <div class="meta__row"><dt data-i18n="statusLabel">Status</dt><dd class="is-idle" id="route-status" data-i18n="statusIdle">No start selected</dd></div>
+              <div class="meta__row"><dt data-i18n="routeLabel">Route</dt><dd id="route-sequence">&mdash;</dd></div>
+              <div class="meta__row"><dt data-i18n="selectedExitLabel">Selected exit</dt><dd id="route-exit">&mdash;</dd></div>
+              <div class="meta__row"><dt data-i18n="totalCostLabel">Total cost</dt><dd id="route-cost">&mdash;</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title" data-i18n="hazards">Hazards</h2>
+            <span class="badge badge--idle" id="hazard-badge" data-i18n="badgeHazardNone">None</span>
+          </div>
+          <div class="hazard">
+            <div class="hazard__row">
+              <label class="hazard__label" for="hazard-node" data-i18n="blockNodeLabel">Block node (room / junction)</label>
+              <div class="hazard__controls">
+                <select class="select select--sm" id="hazard-node">
+                  <option value="" data-i18n="chooseNode">Choose a node&hellip;</option>
+                </select>
+                <button class="btn btn--mini" id="hazard-node-btn" type="button" disabled data-i18n="block">Block</button>
+              </div>
+            </div>
+
+            <div class="hazard__row">
+              <label class="hazard__label" for="hazard-edge" data-i18n="blockCorridorLabel">Block corridor</label>
+              <div class="hazard__controls">
+                <select class="select select--sm" id="hazard-edge">
+                  <option value="" data-i18n="chooseCorridor">Choose a corridor&hellip;</option>
+                </select>
+                <button class="btn btn--mini" id="hazard-edge-btn" type="button" disabled data-i18n="block">Block</button>
+              </div>
+            </div>
+
+            <div class="hazard__row">
+              <label class="hazard__label" for="hazard-exit" data-i18n="closeExitLabel">Close exit</label>
+              <div class="hazard__controls">
+                <select class="select select--sm" id="hazard-exit">
+                  <option value="" data-i18n="chooseExit">Choose an exit&hellip;</option>
+                </select>
+                <button class="btn btn--mini" id="hazard-exit-btn" type="button" disabled data-i18n="close">Close</button>
+              </div>
+            </div>
+
+            <p class="hazard__summary" id="hazard-summary" data-i18n="noActiveHazards">No active hazards</p>
+            <button class="btn btn--ghost" id="hazard-reset-btn" type="button" data-i18n="resetHazards">Reset hazards</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title" data-i18n="legend">Legend</h2>
+          </div>
+          <ul class="legend">
+            <li class="legend__item">
+              <span class="legend__swatch legend__swatch--room" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendRoom">Room</span>
+              <span class="legend__desc" data-i18n="legendRoomDesc">Start / safe space</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__swatch legend__swatch--junction" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendJunction">Junction</span>
+              <span class="legend__desc" data-i18n="legendJunctionDesc">Corridor crossing</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__swatch legend__swatch--exit" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendExit">Exit</span>
+              <span class="legend__desc" data-i18n="legendExitDesc">Escape point</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__pill" aria-hidden="true">3</span>
+              <span class="legend__name" data-i18n="legendCost">Corridor cost</span>
+              <span class="legend__desc" data-i18n="legendCostDesc">Time to traverse</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__line" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendRoute">Escape route</span>
+              <span class="legend__desc" data-i18n="legendRouteDesc">Lowest-cost path</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__swatch legend__swatch--blocked" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendBlockedNode">Blocked node</span>
+              <span class="legend__desc" data-i18n="legendBlockedNodeDesc">Cannot be entered</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__dash" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendBlockedCorridor">Blocked corridor</span>
+              <span class="legend__desc" data-i18n="legendBlockedCorridorDesc">Connection removed</span>
+            </li>
+            <li class="legend__item">
+              <span class="legend__swatch legend__swatch--closed" aria-hidden="true"></span>
+              <span class="legend__name" data-i18n="legendClosedExit">Closed exit</span>
+              <span class="legend__desc" data-i18n="legendClosedExitDesc">Not a destination</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title" data-i18n="detailsPanel">Details</h2>
+          </div>
+          <div class="details" id="details">
+            <p class="details__hint" data-i18n="detailsHint">Select a node or corridor on the map to inspect it.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title" data-i18n="dataset">Dataset</h2>
+            <button class="btn btn--mini" id="import-btn" type="button" data-i18n="importJson">Import JSON</button>
+            <input class="visually-hidden" id="import-input" type="file" accept="application/json,.json" tabindex="-1" />
+          </div>
+          <dl class="meta" id="meta">
+            <div class="meta__row"><dt data-i18n="sourceLabel">Source</dt><dd id="meta-source">building.json</dd></div>
+            <div class="meta__row"><dt data-i18n="statusShort">Status</dt><dd id="meta-status" data-i18n="metaLoading">Loading&hellip;</dd></div>
+          </dl>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="foot">
+      <span data-i18n="footerNote">Smart Escape &mdash; frontend competition prototype</span>
+      <span id="foot-count"></span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
